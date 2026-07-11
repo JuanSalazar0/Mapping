@@ -1,0 +1,166 @@
+:root {
+  --bg: #0d0f14;
+  --panel: #161a22;
+  --panel-2: #1e2430;
+  --line: #2a3140;
+  --text: #e6ebf2;
+  --muted: #8891a3;
+  --accent: #00e5ff;
+  --accent-2: #ff2d78;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* ---- Top bar ---- */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.brand .logo { color: var(--accent); font-size: 20px; }
+
+.tools { display: flex; align-items: center; gap: 6px; }
+.tools .sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
+
+button {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 11px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+button:hover { background: #262d3b; border-color: #3a4256; }
+button.accent {
+  background: var(--accent);
+  color: #04121a;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+button.accent:hover { background: #33ecff; }
+button.active { border-color: var(--accent); color: var(--accent); }
+
+/* ---- Layout ---- */
+main {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  height: calc(100% - 52px);
+}
+
+#stage-wrap {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 40%, #12151d 0%, #0a0c11 100%);
+  overflow: hidden;
+}
+#stage { display: block; width: 100%; height: 100%; cursor: crosshair; }
+
+#hint {
+  position: absolute;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 24, 32, 0.85);
+  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+  white-space: nowrap;
+}
+#hint b { color: var(--text); }
+
+/* ---- Inspector ---- */
+#inspector {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  padding: 16px;
+  overflow-y: auto;
+}
+#inspector h2 { margin: 0 0 14px; font-size: 15px; }
+.muted { color: var(--muted); font-size: 13px; }
+
+.field { display: block; margin-bottom: 14px; font-size: 12px; }
+.field > span {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.field em { color: var(--accent); font-style: normal; }
+.field input[type=text],
+.field select {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 9px;
+  font-size: 13px;
+}
+.field input[type=color] {
+  width: 100%;
+  height: 34px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.field input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.row { display: flex; gap: 8px; margin-top: 6px; }
+.row button { flex: 1; }
+
+.help { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; }
+.help h3 { font-size: 12px; color: var(--muted); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; }
+.help ul { margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.help li { margin-bottom: 5px; }
+kbd {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text);
+}
+
+/* ---- Projection output ---- */
+#projection {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 100;
+}
+#projection-canvas { display: block; width: 100%; height: 100%; }
+#projection-exit {
+  position: fixed;
+  top: 12px; right: 16px;
+  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  pointer-events: none;
+}

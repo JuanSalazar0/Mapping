@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Heavy Mapper — Video Mapping</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">◈</span>
+      <span>Heavy Mapper</span>
+    </div>
+    <div class="tools">
+      <button id="btn-add" title="Añadir superficie (A)">＋ Superficie</button>
+      <button id="btn-delete" title="Borrar seleccionada (Supr)">🗑 Borrar</button>
+      <span class="sep"></span>
+      <button id="btn-play" title="Reproducir / pausar animación (Espacio)">⏸ Pausa</button>
+      <button id="btn-grid" title="Mostrar rejilla (G)">▦ Rejilla</button>
+      <span class="sep"></span>
+      <button id="btn-save" title="Guardar proyecto">💾 Guardar</button>
+      <button id="btn-load" title="Cargar proyecto">📂 Cargar</button>
+      <span class="sep"></span>
+      <button id="btn-project" class="accent" title="Salida a pantalla completa (F)">▶ Proyectar</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="stage-wrap">
+      <canvas id="stage"></canvas>
+      <div id="hint">Pulsa <b>＋ Superficie</b> para empezar. Arrastra las <b>esquinas</b> para deformar, el <b>centro</b> para mover.</div>
+    </section>
+
+    <aside id="inspector">
+      <h2>Inspector</h2>
+      <div id="no-selection" class="muted">Ninguna superficie seleccionada.</div>
+
+      <div id="props" hidden>
+        <label class="field">
+          <span>Nombre</span>
+          <input id="prop-name" type="text" />
+        </label>
+
+        <label class="field">
+          <span>Efecto</span>
+          <select id="prop-effect"></select>
+        </label>
+
+        <label class="field">
+          <span>Color</span>
+          <input id="prop-color" type="color" value="#00e5ff" />
+        </label>
+
+        <label class="field">
+          <span>Color 2</span>
+          <input id="prop-color2" type="color" value="#ff0080" />
+        </label>
+
+        <label class="field">
+          <span>Velocidad <em id="val-speed">1.0×</em></span>
+          <input id="prop-speed" type="range" min="0" max="4" step="0.1" value="1" />
+        </label>
+
+        <label class="field">
+          <span>Escala <em id="val-scale">1.0×</em></span>
+          <input id="prop-scale" type="range" min="0.2" max="4" step="0.1" value="1" />
+        </label>
+
+        <label class="field">
+          <span>Opacidad <em id="val-opacity">100%</em></span>
+          <input id="prop-opacity" type="range" min="0" max="1" step="0.05" value="1" />
+        </label>
+
+        <div class="row">
+          <button id="prop-duplicate">Duplicar</button>
+          <button id="prop-reset">Reset esquinas</button>
+        </div>
+      </div>
+
+      <div class="help">
+        <h3>Atajos</h3>
+        <ul>
+          <li><kbd>A</kbd> nueva superficie</li>
+          <li><kbd>Supr</kbd> borrar</li>
+          <li><kbd>Espacio</kbd> play / pausa</li>
+          <li><kbd>G</kbd> rejilla</li>
+          <li><kbd>F</kbd> proyectar (fullscreen)</li>
+          <li><kbd>Esc</kbd> salir de proyección</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <div id="projection" hidden>
+    <canvas id="projection-canvas"></canvas>
+    <div id="projection-exit">Esc para salir</div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
