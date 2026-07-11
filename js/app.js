@@ -5,6 +5,7 @@
 import { Surface, TEXTURE_RES } from "./surface.js";
 import { EFFECTS } from "./effects.js";
 import { warp } from "./warp.js";
+import { Vision } from "./vision.js";
 
 const stage = document.getElementById("stage");
 const ctx = stage.getContext("2d");
@@ -53,12 +54,25 @@ function render() {
 
   if (showGrid) drawGrid(ctx, w, h);
 
+  // Visión: detectamos el objeto ANTES de dibujar, para saber qué
+  // superficies están "tocadas" y reaccionar en el mismo frame.
+  let detection = null;
+  if (cameraOn) detection = vision.detect(w, h);
+  updateCollisions(detection, t);
+
   for (const s of surfaces) {
     s.renderTexture(t);
     warp(ctx, s.tex, s.corners, TEXTURE_RES, s.opacity);
   }
+  // Destello de colisión sobre las superficies ocupadas.
+  for (const s of surfaces) if (s.occupied) drawHitFlash(ctx, s, t);
   // Overlays de edición (no van a la proyección).
   for (const s of surfaces) drawOutline(ctx, s, s === selected);
+
+  if (cameraOn) {
+    drawDetectionMarker(ctx, detection);
+    drawCameraPreview(detection);
+  }
 
   if (projecting) renderProjection();
   requestAnimationFrame(render);
@@ -75,13 +89,29 @@ function drawGrid(c, w, h) {
 
 function drawOutline(c, s, isSel) {
   const cn = s.corners;
-  c.strokeStyle = isSel ? "#00e5ff" : "rgba(255,255,255,0.35)";
-  c.lineWidth = isSel ? 2 : 1;
+  if (s.occupied) {
+    c.strokeStyle = "#ff2d78";
+    c.lineWidth = 3;
+    c.shadowColor = "#ff2d78";
+    c.shadowBlur = 16;
+  } else {
+    c.strokeStyle = isSel ? "#00e5ff" : "rgba(255,255,255,0.35)";
+    c.lineWidth = isSel ? 2 : 1;
+  }
   c.beginPath();
   c.moveTo(cn[0].x, cn[0].y);
   for (let i = 1; i < 4; i++) c.lineTo(cn[i].x, cn[i].y);
   c.closePath();
   c.stroke();
+  c.shadowBlur = 0;
+
+  if (s.occupied) {
+    const ctr = s.center();
+    c.fillStyle = "#ff2d78";
+    c.font = "bold 13px system-ui";
+    c.textAlign = "center";
+    c.fillText("▲ COLISIÓN", ctr.x, ctr.y - 12);
+  }
 
   if (isSel) {
     for (const p of cn) {
@@ -296,11 +326,182 @@ window.addEventListener("keydown", (e) => {
     case "a": addSurface(); break;
     case "delete": case "backspace": deleteSelected(); break;
     case "g": btnGrid.click(); break;
+    case "c": toggleCamera(); break;
     case "f": enterProjection(); break;
     case " ": e.preventDefault(); btnPlay.click(); break;
     case "escape": if (projecting) exitProjection(); break;
   }
 });
+
+// ---------- Visión por cámara (colisiones) ----------
+const vision = new Vision();
+let cameraOn = false;
+let calibrating = false;
+let calibPoints = []; // clics de calibración en coords normalizadas del preview
+
+const camPanel = document.getElementById("camera-panel");
+const camPreview = document.getElementById("cam-preview");
+const cpctx = camPreview.getContext("2d");
+const camStatus = document.getElementById("cam-status");
+const btnCamera = document.getElementById("btn-camera");
+
+async function toggleCamera() {
+  if (cameraOn) {
+    vision.stop();
+    cameraOn = false;
+    camPanel.hidden = true;
+    btnCamera.classList.remove("active");
+    for (const s of surfaces) s.occupied = false;
+    return;
+  }
+  try {
+    await vision.start();
+    cameraOn = true;
+    camPanel.hidden = false;
+    btnCamera.classList.add("active");
+    camStatus.textContent =
+      "Cámara activa. Clic en el vídeo para elegir el color a seguir.";
+  } catch (err) {
+    flash("No se pudo acceder a la cámara: " + err.message);
+  }
+}
+btnCamera.addEventListener("click", toggleCamera);
+
+document.getElementById("cam-color").addEventListener("input", (e) => {
+  vision.target = hexToRgb(e.target.value);
+});
+document.getElementById("cam-tol").addEventListener("input", (e) => {
+  vision.tolerance = +e.target.value;
+});
+document.getElementById("cam-mirror").addEventListener("change", (e) => {
+  vision.mirror = e.target.checked;
+});
+document.getElementById("cam-calibrate").addEventListener("click", () => {
+  calibrating = true;
+  calibPoints = [];
+  camStatus.textContent =
+    "Calibración: clic en las 4 esquinas del área proyectada — " +
+    "arriba-izq, arriba-der, abajo-der, abajo-izq.";
+});
+document.getElementById("cam-calibrate-reset").addEventListener("click", () => {
+  vision.clearCalibration();
+  calibrating = false;
+  calibPoints = [];
+  camStatus.textContent = "Calibración restablecida (mapeo lineal al escenario).";
+});
+
+// Clic en el preview: en calibración recoge puntos; si no, elige el color.
+camPreview.addEventListener("click", (e) => {
+  const r = camPreview.getBoundingClientRect();
+  const nx = (e.clientX - r.left) / r.width;
+  const ny = (e.clientY - r.top) / r.height;
+  if (calibrating) {
+    calibPoints.push({ x: nx, y: ny });
+    if (calibPoints.length === 4) {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      const dst = [{ x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }];
+      vision.setCalibration(calibPoints.slice(), dst);
+      calibrating = false;
+      camStatus.textContent = "Calibración lista ✓ — la cámara ya está mapeada al escenario.";
+    } else {
+      camStatus.textContent = `Calibración: ${calibPoints.length}/4 puntos marcados.`;
+    }
+  } else {
+    const col = vision.pickColorAt(nx, ny);
+    if (col) {
+      vision.target = col;
+      document.getElementById("cam-color").value = rgbToHex(col);
+      camStatus.textContent = `Siguiendo color rgb(${col.r}, ${col.g}, ${col.b}).`;
+    }
+  }
+});
+
+// Detección de colisiones: marca qué superficies contienen el punto detectado
+// y dispara la regla al entrar (transición fuera -> dentro).
+function updateCollisions(det, t) {
+  for (const s of surfaces) {
+    const inside = !!det && s.contains(det.x, det.y);
+    if (inside && !s.occupied) {
+      s.enteredAt = t;
+      onSurfaceHit(s);
+    }
+    s.occupied = inside;
+  }
+}
+
+// Regla que se ejecuta al entrar un objeto en una superficie. Este es el
+// punto donde defines tu lógica: cambiar de efecto, de color, disparar un
+// sonido, contar impactos, etc. Por defecto solo dejamos el destello visual.
+function onSurfaceHit(s) {
+  // Ejemplo (descoméntalo para probar): al recibir un impacto, cambia el
+  // efecto de la superficie al siguiente de la lista.
+  // const keys = Object.keys(EFFECTS);
+  // s.effect = keys[(keys.indexOf(s.effect) + 1) % keys.length];
+}
+
+// Destello que se desvanece ~0.6 s tras la entrada del objeto.
+function drawHitFlash(c, s, t) {
+  const cn = s.corners;
+  const age = t - (s.enteredAt || 0);
+  const pulse = Math.max(0, 1 - age / 0.6);
+  c.save();
+  c.beginPath();
+  c.moveTo(cn[0].x, cn[0].y);
+  for (let i = 1; i < 4; i++) c.lineTo(cn[i].x, cn[i].y);
+  c.closePath();
+  c.fillStyle = `rgba(255,45,120,${0.12 + pulse * 0.45})`;
+  c.fill();
+  c.restore();
+}
+
+// Marcador del objeto detectado sobre el escenario.
+function drawDetectionMarker(c, det) {
+  if (!det) return;
+  const r = 8 + det.size * 40;
+  c.strokeStyle = "#7cff6b";
+  c.lineWidth = 2;
+  c.beginPath(); c.arc(det.x, det.y, r, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = "#7cff6b";
+  c.beginPath(); c.arc(det.x, det.y, 2.5, 0, Math.PI * 2); c.fill();
+}
+
+// Vista en miniatura de la cámara con el marcador y los puntos de calibración.
+function drawCameraPreview(det) {
+  const pw = camPreview.width, ph = camPreview.height;
+  cpctx.clearRect(0, 0, pw, ph);
+  cpctx.save();
+  if (vision.mirror) { cpctx.translate(pw, 0); cpctx.scale(-1, 1); }
+  if (vision.video.readyState >= 2) cpctx.drawImage(vision.video, 0, 0, pw, ph);
+  cpctx.restore();
+
+  if (det) {
+    cpctx.strokeStyle = "#7cff6b";
+    cpctx.lineWidth = 2;
+    cpctx.beginPath();
+    cpctx.arc(det.nx * pw, det.ny * ph, 10, 0, Math.PI * 2);
+    cpctx.stroke();
+  }
+
+  if (calibPoints.length) {
+    cpctx.font = "10px system-ui";
+    calibPoints.forEach((p, idx) => {
+      cpctx.fillStyle = "#00e5ff";
+      cpctx.beginPath(); cpctx.arc(p.x * pw, p.y * ph, 5, 0, Math.PI * 2); cpctx.fill();
+      cpctx.fillStyle = "#fff";
+      cpctx.fillText(idx + 1, p.x * pw + 7, p.y * ph + 3);
+    });
+  }
+}
+
+// --- utilidades de color (para el panel de cámara) ---
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgbToHex({ r, g, b }) {
+  const h = (v) => v.toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
 
 // ---------- Arranque ----------
 resize();

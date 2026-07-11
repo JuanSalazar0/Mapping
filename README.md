@@ -21,7 +21,43 @@ modificaciones.
 
 ### Atajos
 `A` nueva superficie · `Supr` borrar · `Espacio` play/pausa ·
-`G` rejilla · `F` proyectar · `Esc` salir de proyección.
+`G` rejilla · `C` cámara · `F` proyectar · `Esc` salir de proyección.
+
+## Cámara + colisiones (experimental)
+
+Pulsa **👁 Cámara** (o `C`) para activar la webcam y detectar objetos por
+color, de modo que la escena reaccione al mundo físico.
+
+1. Da permiso a la cámara. Aparece una vista en miniatura abajo a la izquierda.
+2. **Haz clic en el vídeo** sobre el objeto que quieras seguir: toma ese color
+   como objetivo. Ajusta la **Tolerancia** si lo pierde o detecta de más.
+3. (Opcional pero recomendado) Pulsa **🎯 Calibrar** y haz clic en las **4
+   esquinas** del área proyectada dentro de la imagen de la cámara
+   (arriba-izq, arriba-der, abajo-der, abajo-izq). Así la posición de la
+   cámara se mapea a la posición real en el escenario.
+4. Mueve el objeto: verás un marcador verde siguiéndolo. Cuando entra en una
+   superficie, esta se resalta (**▲ COLISIÓN**) y emite un destello.
+
+### Cómo funciona (`js/vision.js`)
+
+- **Captura**: `getUserMedia` vuelca cada frame en un lienzo pequeño (160×120)
+  para leer sus píxeles rápido.
+- **Detección**: se recorren los píxeles y se toma el **centroide** de los que
+  están dentro de la tolerancia del color objetivo (seguimiento de blob por
+  color, sin librerías).
+- **Calibración**: una **homografía** 3×3 mapea la posición en la cámara
+  (0..1) a coordenadas del escenario. Es la misma matemática de perspectiva
+  que `warp.js`, pero al revés (imagen → escena). Se resuelve con los 4 puntos
+  que marcas.
+- **Colisión**: el punto ya en coordenadas del escenario se prueba contra cada
+  superficie con `Surface.contains()` (point-in-polygon, que ya existía).
+
+### Definir tus propias reglas
+
+En `js/app.js`, la función `onSurfaceHit(s)` se ejecuta cada vez que un objeto
+**entra** en una superficie. Ahí defines la lógica: cambiar de efecto, de
+color, disparar un sonido, contar impactos, etc. Trae un ejemplo comentado
+(pasar al siguiente efecto al recibir un impacto).
 
 ## Cómo funciona (arquitectura)
 
@@ -35,8 +71,10 @@ js/
 │                textura offscreen propia donde se renderiza su efecto.
 ├── warp.js      El corazón del mapping. Deforma la textura cuadrada hacia
 │                los 4 puntos reales de la superficie (perspectiva).
+├── vision.js    Cámara + detección de objetos por color + calibración por
+│                homografía (para las colisiones con el mundo físico).
 └── app.js       UI, interacción con el ratón, inspector, bucle de render,
-                 guardar/cargar y salida de proyección.
+                 guardar/cargar, colisiones y salida de proyección.
 ```
 
 ### La clave: el warp (`warp.js`)

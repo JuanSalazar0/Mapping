@@ -18,6 +18,7 @@
       <span class="sep"></span>
       <button id="btn-play" title="Reproducir / pausar animación (Espacio)">⏸ Pausa</button>
       <button id="btn-grid" title="Mostrar rejilla (G)">▦ Rejilla</button>
+      <button id="btn-camera" title="Cámara + colisiones (C)">👁 Cámara</button>
       <span class="sep"></span>
       <button id="btn-save" title="Guardar proyecto">💾 Guardar</button>
       <button id="btn-load" title="Cargar proyecto">📂 Cargar</button>
@@ -30,6 +31,27 @@
     <section id="stage-wrap">
       <canvas id="stage"></canvas>
       <div id="hint">Pulsa <b>＋ Superficie</b> para empezar. Arrastra las <b>esquinas</b> para deformar, el <b>centro</b> para mover.</div>
+
+      <div id="camera-panel" hidden>
+        <div class="cam-head">👁 Visión por cámara</div>
+        <canvas id="cam-preview" width="240" height="180"></canvas>
+        <p id="cam-status" class="cam-status">Cámara activa.</p>
+        <label class="cam-field">
+          <span>Color a seguir</span>
+          <input id="cam-color" type="color" value="#00e5ff" />
+        </label>
+        <label class="cam-field">
+          <span>Tolerancia</span>
+          <input id="cam-tol" type="range" min="20" max="140" step="5" value="60" />
+        </label>
+        <label class="cam-check">
+          <input id="cam-mirror" type="checkbox" checked /> Espejo
+        </label>
+        <div class="cam-row">
+          <button id="cam-calibrate" title="Marca las 4 esquinas del área proyectada">🎯 Calibrar</button>
+          <button id="cam-calibrate-reset" title="Volver al mapeo lineal">Reset</button>
+        </div>
+      </div>
     </section>
 
     <aside id="inspector">
@@ -85,6 +107,7 @@
           <li><kbd>Supr</kbd> borrar</li>
           <li><kbd>Espacio</kbd> play / pausa</li>
           <li><kbd>G</kbd> rejilla</li>
+          <li><kbd>C</kbd> cámara + colisiones</li>
           <li><kbd>F</kbd> proyectar (fullscreen)</li>
           <li><kbd>Esc</kbd> salir de proyección</li>
         </ul>
